@@ -1,8 +1,12 @@
+
+
+
 functions {
 #include /functions/reverse.stan
 #include /functions/common_functions.stan
 #include /functions/continuous_likelihoods.stan
 #include /functions/linkinv.stan
+#include /functions/phylo_functions.stan
 
   vector test_csr_matrix_times_vector(int m, int n, vector w,
                                       int[] v, int[] u, vector b) {
@@ -22,6 +26,7 @@ int obs[N_obs]; // vector of observations
 #include /data/hyperparameters.stan
 #include /data/glmer_stuff.stan
 #include /data/glmer_stuff2.stan
+#include /data/data_phy.stan
 }
 
 transformed data {
@@ -43,6 +48,7 @@ parameters {
 #include /parameters/parameters_glm.stan
 #include /parameters/parameters_ac.stan
 #include /parameters/parameters_obs.stan
+#include /parameters/parameters_phy.stan
   vector<lower=0>[M] y_raw;
   real<lower=0> tau_raw;
 }
@@ -87,12 +93,14 @@ transformed parameters {
 }
 
 model {
+  target += exponential_lpdf(Ne_I_scalar_phy | 1.0);
   target += exponential_lpdf(tau_raw | 1);
   target += exponential_lpdf(y_raw | 1);
 
 #include /model/priors_glm.stan
 #include /model/priors_ac.stan
 #include /model/priors_obs.stan
+#include /model/priors_phy.stan
   if (t > 0) {
     real dummy = decov_lp(z_b, z_T, rho, zeta, tau,
                           regularization, delta, shape, t, p);
@@ -121,3 +129,4 @@ generated quantities {
     alpha[1] = gamma[1] - dot_product(xbar, beta);
   }
 }
+

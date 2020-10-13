@@ -42,9 +42,10 @@ standata_reg <- function(object, ...) {
 
   x <- just_fe(x)
 
-  autocor <- NULL
+  autocor <- phylo <- NULL
   if (inherits(object, "epirt_")) {
     autocor <- standata_autocor(object)
+    phylo <- standata_phylo(object)
   }
 
   # formula with no response and no autocorrelation terms
@@ -168,15 +169,16 @@ standata_reg <- function(object, ...) {
     prior_scale_for_oaux,
     prior_df_for_oaux
   )
-
+  
   out <- c(out, autocor) # add data for autocorrelation terms
+  out <- c(out, phylo) # add data for phylo terms
 
   # make a copy of user specification before modifying 'group'
   # (used for keeping track of priors)
   group <- group
   prior_covariance <- prior_covariance
   user_covariance <- if (!length(group)) NULL else prior_covariance
-
+  
   if (length(group) && length(group$flist)) {
     if (is.null(prior_covariance)) {
       stop("'prior_covariance' can't be NULL.", call. = FALSE)
@@ -235,7 +237,6 @@ standata_reg <- function(object, ...) {
     out$len_concentration <- 0L
     out$len_regularization <- 0L
   }
-
   prior_info <- summarize_glm_prior(
     user_prior = prior_stuff,
     user_prior_intercept = prior_intercept_stuff,
@@ -251,7 +252,6 @@ standata_reg <- function(object, ...) {
 
   out$prior_info <- prior_info
   out$X <- xtemp
-
   return(out)
 }
 

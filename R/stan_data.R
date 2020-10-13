@@ -33,6 +33,20 @@ standata_all <- function(rt,
     ),
     standata_rt(rt)
   )
+  
+  ## crop phylo. NB: vectors are going backwards in time.
+  if(out$N_phy > 0){
+    tocrop <- c("ltt_terms_phy","nco_phy","intervalLength_phy","ne_bin_phy")
+    # the tree data start at the earliest on the same date as the rest of the data and tree_delay=0. Otherwise, there is a delay > 1
+    tree_delay <- out$tree_delay
+    maxbin <- max(out$ne_bin_phy)
+    N2 <- out$N2
+    # ne_bin_phy is the position of the I vector. Position 1 is the first date for which there is data. 
+    out$ne_bin_phy <- maxbin + tree_delay - out$ne_bin_phy + 1
+    for(tc in tocrop) out[[tc]] <- out[[tc]][out$ne_bin_phy<=N2]
+    out$N_phy <- length(out$ne_bin_phy)
+  }
+  
   return(out)
 }
 
@@ -42,12 +56,12 @@ standata_all <- function(rt,
 # @param formula, data Same as in epim
 standata_autocor <- function(object) {
   out <- list()
-
+  
   if (!inherits(object, "epirt_"))
     stop("Bug found. 'object' must have class 'epirt_'.")
-
+  
   formula <- formula(object)
-
+  
   if (is_autocor(formula)) {
     autocor <- object$autocor
     out$ac_nterms <- length(autocor$nproc)
@@ -56,7 +70,7 @@ standata_autocor <- function(object) {
     out$ac_nproc <- sum(autocor$nproc)
     # todo: implement this as an option
     out$ac_prior_scales <- as.array(autocor$prior_scale)
-
+    
     # add sparse matrix representation
     parts <- rstan::extract_sparse_parts(autocor$Z)
     out$ac_v <- parts$v - 1L
@@ -64,6 +78,27 @@ standata_autocor <- function(object) {
   } else {
     out$ac_nterms <- out$ac_q <- out$ac_nproc <- out$ac_nnz <- 0
     out$ac_prior_scales <- out$ac_v <- out$ac_ntime <- numeric()
+  }
+  return(out)
+}
+
+# Generate standata for phylo terms
+#
+# @inheritParams epim
+# @param formula, data Same as in epim
+standata_phylo <- function(object) {
+  out <- list()
+  
+  if (!inherits(object, "epirt_"))
+    stop("Bug found. 'object' must have class 'epirt_'.")
+  #formula <- formula(object)
+  if ('phylo'%in%names(object)) {
+    phylo <- object$phylo
+    for(nm in names(phylo))
+      out[[nm]] <- phylo[[nm]]
+  } else {
+    out$N_phy <- 0
+    out$intervalLength_phy <- out$ne_bin_phy <- out$nco_phy <- out$ltt_terms_phy <- numeric()
   }
   return(out)
 }

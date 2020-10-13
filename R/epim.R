@@ -55,10 +55,7 @@
 #' args <- EuropeCovid
 #' args$algorithm <- "sampling"
 #' args$rt <- epirt(
-#'  formula=R(country, date) ~ 0 + lockdown,
-#'  args$prior <- shifted_gamma(shape = 1 / 6,
-#'                              scale = 1,
-#'                              shift = log(1.05) / 6)
+#'  formula=R(country, date) ~ 0 + lockdown
 #' )
 #'
 #' fit <- do.call("epim", args)
@@ -89,7 +86,7 @@ epim <- function(rt,
   groups  <- levels(data$group)
   pops    <- check_pops(pops, groups)
   si      <- check_sv(si, "si")
-  algorithm <- match.arg(algorithm)
+  algorithm <- match.arg(algorithm,c("sampling", "meanfield", "fullrank"))
 
   if (seed_days < 1) {
     stop("'seed_days' must be greater than zero", call. = FALSE)
@@ -156,11 +153,10 @@ epim <- function(rt,
       res
     }
   }
-
   sdat <- do.call(standata_all, sdat)
   sdat <- eval(sdat, parent.frame())
 
-    # parameters to keep track of
+  # parameters to keep track of
   pars <- c(
     if (sdat$has_intercept) "alpha",
     if (sdat$K > 0) "beta",
@@ -172,7 +168,8 @@ epim <- function(rt,
     "y",
     "tau2",
     if (length(sdat$ac_nterms)) "ac_scale",
-    if (sdat$num_oaux > 0) "oaux"
+    if (sdat$num_oaux > 0) "oaux",
+    if (length(rt$phylo)) "Ne_I_scalar_phy"
   )
 
   args <- c(
@@ -213,7 +210,6 @@ epim <- function(rt,
 
     Sigma_nms <- unlist(Sigma_nms)
   }
-
   new_names <- c(
     if (sdat$has_intercept) {
       "R|(Intercept)"
@@ -244,6 +240,7 @@ epim <- function(rt,
     if (sdat$num_oaux > 0) {
       make_oaux_nms(obs)
     },
+    if (sdat$N_phy) "Ne_I_scalar_phy",
     "log-posterior"
   )
 
